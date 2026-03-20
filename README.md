@@ -1,6 +1,7 @@
 # Sistema de gestión estudiantil
 
-Proyecto académico para la materia **Ingeniería de Software**, cuyo objetivo es diseñar y documentar un **Sistema de Gestión Estudiantil** para la Universidad de la narrativa.
+Proyecto académico desarrollado actualmente para la materia **Ingeniería de Software II**. Su objetivo principal es diseñar y documentar un **Sistema de Gestión Estudiantil**.
+Este repositorio representa la evolución continua del sistema, habiendo iniciado su desarrollo en 2025 como parte de la materia **Ingeniería de Software I**.
 
 ## Objetivo del sistema
 Centralizar la información académica de estudiantes, docentes y materias, facilitando la gestión administrativa, inscripciones, exámenes y seguimiento académico.
@@ -20,9 +21,6 @@ Centralizar la información académica de estudiantes, docentes y materias, faci
 - `pom.xml` → Archivo de configuración de proyecto Maven.
 - `README.md` → descripción breve del proyecto.
 
-## Entregables prácticos
-- [**Práctico 1**](https://github.com/AgustinaHernandez/Proyecto-IS1) → Análisis inicial, actores, requisitos, backlog y diagrama UML.  
-- [**Práctico 2**](https://github.com/C0dexDev/proyecto_is1_grupo7_c1) → Implementación del sistema.
 
 ## Equipo (nro 7)
 - [adrb1806 | ](https://github.com/adrb1806) Barone, Adrian  
@@ -30,5 +28,9 @@ Centralizar la información académica de estudiantes, docentes y materias, faci
 - [C0dexDev | ](https://github.com/C0dexDev) Menéndez, José Ignacio
 - [franpelliciotti | ](https://github.com/franpelliciotti) Pagliasso, Francine
 
+## Versiones del proyecto
+- [**Versión 2025 (guardada)**](https://github.com/C0dexDev/proyecto_is1_grupo7_c1)
+- [**Versión 2026 (En trabajo)**](https://github.com/AgustinaHernandez/Proyecto-IS2-2026)
+
 ---
-📖 **Universidad Nacional de Rio Cuarto - 2025**
+📖 **Universidad Nacional de Rio Cuarto - 2026**
