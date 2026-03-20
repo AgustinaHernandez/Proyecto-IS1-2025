@@ -23,7 +23,7 @@ DROP TABLE IF EXISTS teachers;
 
 -- Creación de tabla 'teachers'
 CREATE TABLE teachers (
-    id INTEGER NOT NULL PRIMARY KEY,
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     person_id INTEGER NOT NULL,
     degree TEXT NOT NULL,
     email TEXT NOT NULL,
@@ -73,7 +73,9 @@ CREATE TABLE plans (
 DROP TABLE IF EXISTS subjects;
 
 CREATE TABLE subjects (
-    id INTEGER NOT NULL PRIMARY KEY,
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    code INTEGER NOT NULL UNIQUE,
+    name TEXT NOT NULL,
     responsible_id INTEGER NOT NULL,
 
     CONSTRAINT fk_responsible FOREIGN KEY (responsible_id) REFERENCES teachers (id)

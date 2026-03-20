@@ -16,6 +16,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 // Importaciones estándar de Java
 import java.util.HashMap; // Para crear mapas de datos (modelos para las plantillas).
+import java.util.List;
 import java.util.Map; // Interfaz Map, utilizada para Map.of() o HashMap.
 
 // Importaciones de clases del proyecto
@@ -232,6 +233,19 @@ public class App {
             return new ModelAndView(model, "perfil_usuario.mustache");
         }, new MustacheTemplateEngine());
 
+
+        get("/subject/create", (req, res) -> {
+            //checkAdminAccess(req, res);
+            // select de todos los profesores con sus datos de la tabla persona
+            List<Teacher> teachers = Teacher.findAll().include(Person.class);
+            // mapeo para pasarle al mustache luego
+            Map<String, Object> model = Map.of(
+                "teachers", teachers,        // orDefault "" es porque no puede ser null
+                "errorMessage", req.queryParamOrDefault("errorMessage", ""),
+                "successMessage", req.queryParamOrDefault("successMessage", "")
+            );
+            return new ModelAndView(model, "subject_form.mustache");
+        }, new MustacheTemplateEngine());
 
 
         // --- Rutas POST para manejar envíos de formularios y APIs ---
@@ -473,6 +487,37 @@ public class App {
                 return objectMapper.writeValueAsString(Map.of("error", "Error interno al registrar usuario: " + e.getMessage()));
             }
         });
+
+        post("/subject/new", (req, res) -> {
+            String id = req.queryParams("code"); 
+            String name = req.queryParams("name");
+            String respId = req.queryParams("responsible_id");
+
+            System.out.println("DEBUG: Recibido code=" + id + ", Name=" + name + ", Resp=" + respId);
+
+            if (id == null || name == null || respId == null || id.isEmpty() || name.isEmpty()) {
+                res.redirect("/subject/create?error=" + URLEncoder.encode("Faltan datos obligatorios", "UTF-8"));
+                return "";
+            }
+
+            try {
+                Subject s = new Subject();
+                s.set("code", Integer.parseInt(id));
+                s.set("name", name);
+                s.set("responsible_id", Integer.parseInt(respId));
+                
+                if (s.saveIt()) {
+                    res.redirect("/subject/create?message=" + URLEncoder.encode("Materia '" + name + "' creada con éxitooo :D", "UTF-8"));
+                } else {
+                    res.redirect("/subject/create?error=" + URLEncoder.encode(":( tenemos un error de validación: " + s.errors(), "UTF-8"));
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                res.redirect("/subject/create?error=" + URLEncoder.encode("Error: El ID ya existe o es inválido", "UTF-8"));
+            }
+            return "";
+        });
+
 
     } // Fin del método main
 
