@@ -238,9 +238,12 @@ public class App {
             //checkAdminAccess(req, res);
             // select de todos los profesores con sus datos de la tabla persona
             List<Teacher> teachers = Teacher.findAll().include(Person.class);
+            // buscamos los planes
+            List<Plan> plans = Plan.findAll().include(Career.class); 
             // mapeo para pasarle al mustache luego
             Map<String, Object> model = Map.of(
-                "teachers", teachers,        // orDefault "" es porque no puede ser null
+                "teachers", teachers,
+                "plans", plans, // agregar planes al modelo
                 "errorMessage", req.queryParamOrDefault("errorMessage", ""),
                 "successMessage", req.queryParamOrDefault("successMessage", "")
             );
@@ -492,28 +495,35 @@ public class App {
             String id = req.queryParams("code"); 
             String name = req.queryParams("name");
             String respId = req.queryParams("responsible_id");
+            String planId = req.queryParams("plan_id");
 
-            System.out.println("DEBUG: Recibido code=" + id + ", Name=" + name + ", Resp=" + respId);
-
-            if (id == null || name == null || respId == null || id.isEmpty() || name.isEmpty()) {
+            if (id == null || name == null || respId == null || id.isEmpty() || name.isEmpty() || planId == null) {
                 res.redirect("/subject/create?error=" + URLEncoder.encode("Faltan datos obligatorios", "UTF-8"));
                 return "";
             }
 
             try {
+                Base.openTransaction();
                 Subject s = new Subject();
                 s.set("code", Integer.parseInt(id));
                 s.set("name", name);
                 s.set("responsible_id", Integer.parseInt(respId));
-                
                 if (s.saveIt()) {
-                    res.redirect("/subject/create?message=" + URLEncoder.encode("Materia '" + name + "' creada con éxitooo :D", "UTF-8"));
+                    // si se guardó la materia, la asocio al plan
+                    Plan p = Plan.findById(Integer.parseInt(planId));
+                    if (p != null) {
+                        s.add(p); // acá ActiveJDBC hace el insert a subject_belongs_plan, por el @Many2Many
+                    }
+                    Base.commitTransaction();
+                    res.redirect("/subject/create?successMessage=" + URLEncoder.encode("Materia '" + name + "' creada y asignada con éxito :D", "UTF-8"));
                 } else {
-                    res.redirect("/subject/create?error=" + URLEncoder.encode(":( tenemos un error de validación: " + s.errors(), "UTF-8"));
+                    Base.rollbackTransaction();
+                    res.redirect("/subject/create?errorMessage=" + URLEncoder.encode("Error de validación: " + s.errors(), "UTF-8"));
                 }
             } catch (Exception e) {
+                Base.rollbackTransaction();
                 e.printStackTrace();
-                res.redirect("/subject/create?error=" + URLEncoder.encode("Error: El ID ya existe o es inválido", "UTF-8"));
+                res.redirect("/subject/create?errorMessage=" + URLEncoder.encode("Error: El código ya existe o es inválido", "UTF-8"));
             }
             return "";
         });
