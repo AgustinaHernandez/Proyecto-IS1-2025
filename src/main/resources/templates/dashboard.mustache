@@ -67,7 +67,16 @@
             <div class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 p-6 rounded-lg text-center shadow-sm">
                 <h2 class="text-2xl font-bold text-red-700 dark:text-red-300 mb-3">Materias</h2>
                 <p class="text-gray-600 dark:text-gray-400 mb-4">Agrega una materia al sistema.</p>
-                <a href="/subject/create" class="inline-block bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600 transition duration-300">Agregar Profesor</a>
+                <a href="/subject/create" class="inline-block bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600 transition duration-300">Agregar Materia</a>
+            </div>
+            {{/is_admin}}
+
+            <!-- TARJETA ASIGNAR PROFESOR -->
+            {{#is_admin}}
+            <div class="bg-pink-50 dark:bg-pink-900/30 border border-pink-200 dark:border-pink-800 p-6 rounded-lg text-center shadow-sm">
+                <h2 class="text-2xl font-bold text-pink-700 dark:text-pink-300 mb-3">Asignar profesor</h2>
+                <p class="text-gray-600 dark:text-gray-400 mb-4">Asigna un profesor a una materia.</p>
+                <a href="/teacher/assign" class="inline-block bg-pink-500 text-white py-2 px-4 rounded-md hover:bg-pink-600 transition duration-300">Asignar</a>
             </div>
             {{/is_admin}}
             

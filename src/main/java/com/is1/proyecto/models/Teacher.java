@@ -1,10 +1,12 @@
 package com.is1.proyecto.models;
 
 import org.javalite.activejdbc.annotations.BelongsTo;
+import org.javalite.activejdbc.annotations.Many2Many;
 import org.javalite.activejdbc.Model;
 import org.javalite.activejdbc.annotations.Table;
 
 @Table("teachers") // Esta anotación asocia explícitamente el modelo 'Teacher' con la tabla 'teacher' en la DB.
+@Many2Many(other = Subject.class, join = "teaches", sourceFKName = "teacher_id", targetFKName = "subject_id")
 @BelongsTo(parent = Person.class, foreignKeyName = "id")
 public class Teacher extends Model {
     

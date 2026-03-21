@@ -46,25 +46,29 @@ public class App {
 
         // --- Filtro 'before' para gestionar la conexión a la base de datos ---
         // Este filtro se ejecuta antes de cada solicitud HTTP.
-        before((req, res) -> {
+        before("/*", (req, res) -> {
             try {
-                // Abre una conexión a la base de datos utilizando las credenciales del singleton.
-                Base.open(dbConfig.getDriver(), dbConfig.getDbUrl(), dbConfig.getUser(), dbConfig.getPass());
-                System.out.println(req.url());
-
+                if (!Base.hasConnection()) {
+                    Base.open(dbConfig.getDriver(), dbConfig.getDbUrl(), dbConfig.getUser(), dbConfig.getPass());
+                }
             } catch (Exception e) {
-                // Si ocurre un error al abrir la conexión, se registra y se detiene la solicitud
-                // con un código de estado 500 (Internal Server Error) y un mensaje JSON.
-                System.err.println("Error al abrir conexión con ActiveJDBC: " + e.getMessage());
-                halt(500, "{\"error\": \"Error interno del servidor: Fallo al conectar a la base de datos.\"}" + e.getMessage());
+                System.err.println("Error crítico al abrir la DB: " + e.getMessage());
+                halt(500, "Error interno de base de datos.");
             }
         });
-
         // Filtro de seguridad que restringe el acceso solo al admin
         // Las rutas protegidas revisan el atributo is_admin de la sesion
         before("/teacher/create", (req, res) -> checkAdminAccess(req, res));
         before("/teacher/new", (req, res) -> checkAdminAccess(req, res));
-        
+        before("/teacher/assign", (req, res) -> checkAdminAccess(req, res));
+        before("/subject/new", (req, res) -> checkAdminAccess(req, res));
+
+        // --- Filtro 'after-after' para cerrar la conexión a la base de datos pase lo que pase---
+        afterAfter("/*", (req, res) -> {
+            if (Base.hasConnection()) {
+                Base.close();
+            }
+        });
 
         // --- Filtro 'after' para cerrar la conexión a la base de datos ---
         // Este filtro se ejecuta después de que cada solicitud HTTP ha sido procesada.
@@ -119,6 +123,55 @@ public class App {
             // Renderiza la plantilla 'user_form.mustache' con los datos del modelo.
             return new ModelAndView(model, "teacher_form.mustache");
         }, new MustacheTemplateEngine()); // Especifica el motor de plantillas para esta ruta.
+
+        get("/teacher/assign", (req, res) -> {
+            List<Map<String, Object>> subjects = Subject.findAll().toMaps();
+            // obtener el parámetro de búsqueda que el admin puso en el campo
+            String searchQuery = req.queryParams("q");
+            List<Teacher> teachers;
+            if (searchQuery != null && !searchQuery.trim().isEmpty()) {
+                String likeQuery = "%" + searchQuery.trim() + "%";
+                teachers = Teacher.findBySQL(
+                    "SELECT t.* FROM teachers t JOIN persons p ON t.person_id = p.id WHERE p.first_name LIKE ? OR p.last_name LIKE ?", 
+                    likeQuery, likeQuery
+                ).include(Person.class);
+            } else {
+                teachers = java.util.Collections.emptyList();
+            }
+            Map<String, Object> model = Map.of(
+                "teachers", teachers,
+                "subjects", subjects, 
+                "searchQuery", searchQuery != null ? searchQuery : "",
+                "errorMessage", req.queryParamOrDefault("errorMessage", ""),
+                "successMessage", req.queryParamOrDefault("successMessage", "")
+            );
+            
+            return new ModelAndView(model, "teacher_assign_form.mustache");
+        }, new MustacheTemplateEngine());
+
+        // "API" para  buscar a los profesores en el buscador de assign
+        get("/api/teachers/search", (req, res) -> {
+            res.type("application/json");
+            String q = req.queryParams("q");
+            if (q == null || q.trim().isEmpty()) {
+                return "[]"; // retornar vacío si no hay parámetro de búsqueda
+            }
+            String likeQuery = "%" + q.trim() + "%";
+            List<Teacher> teachers = Teacher.findBySQL(
+                "SELECT t.* FROM teachers t JOIN persons p ON t.person_id = p.id WHERE p.first_name LIKE ? OR p.last_name LIKE ?", 
+                likeQuery, likeQuery
+            ).include(Person.class);
+            // poner los resultados en una lista simple para el JSON
+            List<Map<String, Object>> resultList = new java.util.ArrayList<>();
+            for (Teacher t : teachers) {
+                resultList.add(Map.of(
+                    "id", t.getId(),
+                    "fullName", t.getFullNameString(),
+                    "dni", t.getDNI()
+                ));
+            }
+            return objectMapper.writeValueAsString(resultList);
+        });
 
         
         // GET: Ruta para mostrar el dashboard (panel de control) del usuario.
@@ -387,6 +440,36 @@ public class App {
                return ""; // Retorna una cadena vacía. // Retorna una cadena vacía.
            }
        });
+
+       post("/teacher/assign", (req, res) -> {
+            String id = req.queryParams("teacher_id");
+            String subjectId = req.queryParams("subject_id");
+
+            if (id == null || subjectId == null || id.isEmpty() || subjectId.isEmpty()) {
+                res.redirect("/subject/create?error=" + URLEncoder.encode("Faltan datos obligatorios", "UTF-8"));
+                return "";
+            }
+            try {
+                Teacher t = Teacher.findById(Integer.parseInt(id));
+                Subject s = Subject.findById(Integer.parseInt(subjectId));
+                if (t != null && s != null) {
+                    t.add(s); //funciona por el Many@Many que puse en Teacher     
+                    res.redirect("/teacher/assign?successMessage=" + URLEncoder.encode("Profesor asignado a la materia correctamente", "UTF-8"));
+                } else {
+                    res.redirect("/teacher/assign?errorMessage=" + URLEncoder.encode("Error: Profesor o Materia no encontrados", "UTF-8"));
+                }
+
+            } catch (Exception e) {
+                String errorMsg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+                if (errorMsg.contains("unique") || errorMsg.contains("primary key")) {
+                    res.redirect("/teacher/assign?errorMessage=" + URLEncoder.encode("Ese profesor ya está asignado a esa materia.", "UTF-8"));
+                } else {
+                    e.printStackTrace();
+                    res.redirect("/teacher/assign?errorMessage=" + URLEncoder.encode("Error interno al asignar.", "UTF-8"));
+                }
+            }
+            return "";
+        });
 
         // POST: Maneja el envío del formulario de inicio de sesión.
         post("/login", (req, res) -> {
