@@ -62,6 +62,8 @@ public class App {
         before("/teacher/new", (req, res) -> checkAdminAccess(req, res));
         before("/teacher/assign", (req, res) -> checkAdminAccess(req, res));
         before("/subject/new", (req, res) -> checkAdminAccess(req, res));
+        before("/career/create", (req, res) -> checkAdminAccess(req, res));
+        before("/career/new", (req, res) -> checkAdminAccess(req, res));
 
         // --- Filtro 'after-after' para cerrar la conexión a la base de datos pase lo que pase---
         afterAfter("/*", (req, res) -> {
@@ -302,6 +304,25 @@ public class App {
             );
             return new ModelAndView(model, "subject_form.mustache");
         }, new MustacheTemplateEngine());
+
+        get("/career/create", (req, res) -> {
+            Map<String, Object> model = new HashMap<>(); // Crea un mapa para pasar datos a la plantilla.
+
+            // Obtener y añadir mensaje de éxito de los query parameters (ej. ?message=Carrera agregada!)
+            String successMessage = req.queryParams("message");
+            if (successMessage != null && !successMessage.isEmpty()) {
+                model.put("successMessage", successMessage);
+            }
+
+            // Obtener y añadir mensaje de error de los query parameters (ej. ?error=Campos vacíos)
+            String errorMessage = req.queryParams("error");
+            if (errorMessage != null && !errorMessage.isEmpty()) {
+                model.put("errorMessage", errorMessage);
+            }
+
+            // Renderiza la plantilla 'career_form.mustache' con los datos del modelo.
+            return new ModelAndView(model, "career_form.mustache");
+        }, new MustacheTemplateEngine()); // Especifica el motor de plantillas para esta ruta.
 
 
         // --- Rutas POST para manejar envíos de formularios y APIs ---
@@ -611,6 +632,72 @@ public class App {
             return "";
         });
 
+        post("/career/new", (req, res) -> {
+           String idStr = req.queryParams("id").trim();
+           String name = req.queryParams("name").trim();
+          
+          
+            // Validaciones básicas: campos no pueden ser nulos o vacíos.
+            if (idStr == null || idStr.isEmpty()
+                || name == null || name.isEmpty()
+            ) {
+               String errorMsg = URLEncoder.encode("Todos los campos son requeridos.", StandardCharsets.UTF_8);
+               res.redirect("/career/create?error=" + errorMsg);
+               return "";
+            }
+
+            //Validación de código
+            Integer id = 0;
+            try {
+                id = Integer.parseInt(idStr);
+                if (id <= 0) throw new IllegalArgumentException("Código inválido"); //TODO: Discutible
+            } catch (Exception e) {
+                res.status(400);
+                String errorMsg = URLEncoder.encode("El código debe ser un número válido.", StandardCharsets.UTF_8);
+                res.redirect("/career/create?error=" + errorMsg);
+                return "";
+            }
+
+            //Validación de nombre
+            String result = name.replaceAll("[^\\p{L}\\p{Nd}\\s]", ""); //Quita todos los caracteres especiales (que no son letras, números o espacios intermedios) del name
+            if(result.length() != name.length()){ //Chequear si cambió la longitud
+                String errorMsg = URLEncoder.encode("El nombre no puede contener caracteres especiales.", StandardCharsets.UTF_8);
+                res.redirect("/career/create?error=" + errorMsg);
+                return "";
+            }
+
+            //Principal
+            try {
+                // Intenta crear y guardar la nueva carrera en la base de datos.
+                
+                Base.openTransaction();  // Iniciamos la transaccion
+
+                Career nc = new Career(); // Crea una nueva instancia del modelo Career.
+
+                nc.set("id", id);
+                nc.set("name", name);
+                nc.insert(); //insert() en lugar de saveIt(), porque id NO es autoincremental.
+
+                Base.commitTransaction();               
+
+                res.status(201); // Código de estado HTTP 201 (Created) para una creación exitosa.
+                // Redirige al formulario de creación con un mensaje de éxito.
+                String successMsg = URLEncoder.encode("Carrera "+name+" ["+id+"] "+"registrada correctamente.",StandardCharsets.UTF_8);
+                res.redirect("/career/create?message= " + successMsg);
+                return ""; // Retorna una cadena vacía.
+
+
+           } catch (Exception e) {
+               // Si ocurre cualquier error durante la operación de DB (ej. código de carrera duplicado),
+               // se captura aquí y se redirige con un mensaje de error.
+               Base.rollbackTransaction(); // Si falla algo deshace
+               e.printStackTrace(); // Imprime el stack trace para depuración.
+               res.status(500); // Código de estado HTTP 500 (Internal Server Error).
+               String errorMsg = URLEncoder.encode("ERROR: id de carrera ya existente o error interno.", StandardCharsets.UTF_8);
+               res.redirect("/career/create?error="+errorMsg);
+               return ""; // Retorna una cadena vacía.
+           }
+        });
 
     } // Fin del método main
 
